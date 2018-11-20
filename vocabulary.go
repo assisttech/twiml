@@ -90,6 +90,7 @@ type Dial struct {
 func (d *Dial) Validate() error {
 	var errs []error
 	var hasSIPChild bool
+	var hasNumberChild bool
 	for _, s := range d.Children {
 		switch t := s.Type(); t {
 		default:
@@ -97,6 +98,9 @@ func (d *Dial) Validate() error {
 		case "Client", "Conference", "Number", "Queue", "Sip":
 			if t == "Sip" {
 				hasSIPChild = true
+			}
+			if t == "Number" {
+				hasNumberChild = true
 			}
 			if childErr := s.Validate(); childErr != nil {
 				errs = append(errs, childErr)
@@ -107,7 +111,7 @@ func (d *Dial) Validate() error {
 	ok := Validate(
 		OneOfOpt(d.Method, "GET", "POST"),
 	)
-	if ok && !hasSIPChild {
+	if ok && !hasSIPChild && !hasNumberChild {
 		ok = Validate(Required(d.Number))
 	}
 	if !ok {
@@ -222,11 +226,13 @@ func (s *Sms) Type() string {
 
 // Number TwiML
 type Number struct {
-	XMLName    xml.Name `xml:"Number"`
-	SendDigits string   `xml:"sendDigits,attr,omitempty"`
-	URL        string   `xml:"url,attr,omitempty"`
-	Method     string   `xml:"method,attr,omitempty"`
-	Number     string   `xml:",chardata"`
+	XMLName             xml.Name `xml:"Number"`
+	SendDigits          string   `xml:"sendDigits,attr,omitempty"`
+	URL                 string   `xml:"url,attr,omitempty"`
+	Method              string   `xml:"method,attr,omitempty"`
+	StatusCallbackEvent string   `xml:"statusCallbackEvent,attr,omitempty"`
+	StatusCallback      string   `xml:"statusCallback,attr,omitempty"`
+	Number              string   `xml:",chardata"`
 }
 
 // Validate returns an error if the TwiML is constructed improperly
@@ -276,7 +282,7 @@ func (p *Play) Validate() error {
 
 	ok := Validate(
 		Required(p.URL),
-		NumericOrWait(p.Digits),
+		NumericOpt(p.Digits),
 	)
 
 	if !ok {
